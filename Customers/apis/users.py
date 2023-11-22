@@ -115,7 +115,7 @@ def update_information(username):
     update_fields = request.json
 
     for key, value in update_fields.items():
-        if hasattr(user, key):
+        if hasattr(user, key) and key != "username" and key != "balance":
             setattr(user, key, value)
         else:
             return jsonify({"message": f"Invalid field {key}"}), 400
