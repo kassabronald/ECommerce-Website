@@ -136,6 +136,38 @@ def add_item():
     )
 
 
+def get_all_items():
+    items = Inventory.query.all()
+    if not items:
+        return {"message": "No items found"}, 404
+
+    return (
+        jsonify(
+            {
+                "message": "Items retrieved successfully",
+                "items": inventory_schema.dump(items, many=True),
+            }
+        ),
+        200,
+    )
+
+
+def get_specific_item_information(name):
+    item = Inventory.query.filter_by(name=name).first()
+    if not item:
+        return {"message": f"Item {name} does not exist"}, 404
+
+    return (
+        jsonify(
+            {
+                "message": "Item retrieved successfully",
+                "item": inventory_schema.dump(item),
+            }
+        ),
+        200,
+    )
+
+
 @inventory.route("/", methods=["POST"])
 def api_add_item():
     return add_item()
@@ -149,3 +181,13 @@ def api_update_item(name):
 @inventory.route("/remove/<name>", methods=["PUT"])
 def api_remove_item_from_stock(name):
     return remove_item_from_stock(name)
+
+
+@inventory.route("/", methods=["GET"])
+def api_get_all_items():
+    return get_all_items()
+
+
+@inventory.route("/<name>", methods=["GET"])
+def api_get_specific_item_information(name):
+    return get_specific_item_information(name)

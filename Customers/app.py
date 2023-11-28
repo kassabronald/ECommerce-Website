@@ -5,10 +5,14 @@ from apis.users import users
 from Config.marshmallow import ma
 from Config.bcrypt import bcrypt
 from Config.database import db
+from flask_cors import CORS
+
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = DB_CONFIG
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+CORS(app, resources={r"/*": {"origins": "http://localhost:5002"}})
+
 
 db.app = app
 db.init_app(app)

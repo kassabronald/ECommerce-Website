@@ -3,11 +3,15 @@ from flask_sqlalchemy import SQLAlchemy
 from apis.inventory import inventory
 from Config.marshmallow import ma
 from Config.database import db
-from Config.db_config import DB_CONFIG
+from db_config import DB_CONFIG
+from flask_cors import CORS
+
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = DB_CONFIG
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+CORS(app, resources={r"/*": {"origins": "http://localhost:5002"}})
+
 
 db.app = app
 db.init_app(app)

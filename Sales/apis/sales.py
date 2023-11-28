@@ -1,17 +1,35 @@
 from flask import request, jsonify, Blueprint, abort
-from Config.database import Purchases, purchase_schema
+from Config.database import (
+    Purchases,
+    SinglePurchase,
+    purchase_schema,
+    single_purchase_schema,
+)
 from Config.database import db
-import requests
+import requests, json
 
 
-inventory_api_url = "http://localhost:5001/inventory"
-customers_api_url = "http://localhost:5000/user"
+inventory_api_url = "http://172.17.0.4:5001/inventory"
+customers_api_url = "http://172.17.0.3:5000/user"
 
 sales = Blueprint("sales", __name__, url_prefix="/sales")
 
 
 def display_available_goods():
+    response = None
     response = requests.get(inventory_api_url)
+    try:
+        response = requests.get(inventory_api_url)
+    except requests.exceptions.ConnectionError:
+        return (
+            jsonify(
+                {
+                    "error": "Failed to fetch data from inventory API",
+                    "response": response,
+                }
+            ),
+            500,
+        )
 
     if response.status_code == 200:
         data = response.json()
@@ -40,7 +58,14 @@ def display_available_goods():
 
 
 def get_specific_item_information(item):
-    response = requests.get(f"{inventory_api_url}/{item}")
+    response = None
+    try:
+        response = requests.get(f"{inventory_api_url}/{item}")
+    except requests.exceptions.ConnectionError:
+        return (
+            jsonify({"error": "Failed to fetch data from inventory API"}),
+            500,
+        )
 
     if response.status_code == 200:
         data = response.json()
@@ -57,7 +82,15 @@ def get_specific_item_information(item):
 
 
 def make_sale(item_name, quantity_to_purchase, customer_username):
-    response = requests.get(f"{inventory_api_url}/{item_name}")
+    response = None
+
+    try:
+        response = requests.get(f"{inventory_api_url}/{item_name}")
+    except requests.exceptions.ConnectionError:
+        return (
+            jsonify({"error": "Failed to fetch data from inventory API"}),
+            500,
+        )
 
     if response.status_code != 200:
         return (
@@ -75,13 +108,21 @@ def make_sale(item_name, quantity_to_purchase, customer_username):
         )
     price_to_pay = price * quantity_to_purchase
 
-    customer_info = requests.get(f"{customers_api_url}/{customer_username}")
+    customer_info = None
+
+    try:
+        customer_info = requests.get(f"{customers_api_url}/{customer_username}")
+    except requests.exceptions.ConnectionError:
+        return (
+            jsonify({"error": "Failed to fetch data from customers API"}),
+            500,
+        )
     if customer_info.status_code != 200:
         return (
             jsonify({"error": "Failed to fetch data from customers API"}),
             customer_info.status_code,
         )
-    customer_data = customer_info.json()
+    customer_data = customer_info.json().get("user", {})
     balance = customer_data.get("balance", 0)
 
     if balance < price_to_pay:
@@ -115,25 +156,34 @@ def make_sale(item_name, quantity_to_purchase, customer_username):
     ).first()
 
     if purchase_history:
-        purchase_history.quantity_purchased += quantity_to_purchase
-        purchase_history.total_price_paid += price_to_pay
+        purchase_history.add_purchase((item_name, quantity_to_purchase, price_to_pay))
         db.session.commit()
     else:
         purchase_history = Purchases(
             customer_username=customer_username,
-            quantity_purchased=quantity_to_purchase,
-            total_price_paid=price_to_pay,
         )
+        purchase_history.add_purchase((item_name, quantity_to_purchase, price_to_pay))
         db.session.add(purchase_history)
         db.session.commit()
 
-    return jsonify({"message": "Purchase successful"}), 201
+    return (
+        jsonify(
+            {
+                "message": "Purchase successful",
+                "customer": customer_username,
+                "Purchase": single_purchase_schema.dump(
+                    SinglePurchase(item_name, quantity_to_purchase, price_to_pay)
+                ),
+            }
+        ),
+        201,
+    )
 
 
 def get_purchase_history(customer_name):
     purchase_history = Purchases.query.filter_by(customer_username=customer_name).all()
     if purchase_history:
-        purchase_history = purchase_schema.dump(purchase_history)
+        purchase_history = purchase_schema.dump(purchase_history, many=True)
         return (
             jsonify({"purchase_history": purchase_history}),
             200,
