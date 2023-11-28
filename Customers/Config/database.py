@@ -6,17 +6,15 @@ db = SQLAlchemy()
 
 
 class User(db.Model):
-    __tablename__ = "user"
-    id = db.Column(db.Integer, primary_key=True)
+    __tablename__ = "Customers"
     full_name = db.Column(db.String(100), nullable=False)
-    username = db.Column(db.String(50), unique=True, nullable=False)
+    username = db.Column(db.String(50), unique=True, nullable=False, primary_key=True)
     password = db.Column(db.String(100), nullable=False)
     age = db.Column(db.Integer)
     address = db.Column(db.String(200))
     gender = db.Column(db.String(10))
     marital_status = db.Column(db.String(20))
     balance = db.Column(db.Float, default=0.0)
-    amount_owed = db.Column(db.Float, default=0.0)
 
     def __init__(
         self, full_name, username, password, age, address, gender, marital_status
@@ -27,7 +25,7 @@ class User(db.Model):
         self.address = address
         self.gender = gender
         self.marital_status = marital_status
-        self.hashed_password = bcrypt.generate_password_hash(password)
+        self.password = hash_password(password)
 
     def __repr__(self):
         return f"<User {self.username}>"
@@ -35,8 +33,13 @@ class User(db.Model):
 
 class UserSchema(ma.Schema):
     class Meta:
-        fields = ("id", "username", "full_name")
+        fields = ("username", "full_name", "balance")
         model = User
+
+
+def hash_password(password):
+    hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
+    return hashed_password
 
 
 user_schema = UserSchema()
