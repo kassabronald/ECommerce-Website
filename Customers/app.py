@@ -24,23 +24,5 @@ bcrypt.init_app(app)
 app.register_blueprint(users)
 
 
-# def check_db_connection():
-#     try:
-#         db.engine.connect()
-#         print("Database connection successful")
-#     except Exception as e:
-#         print("Database connection error: ", e)
-#         return False
-#     return True
-
-
-# @app.route("/ok")
-# def test_db_connection():
-#     if check_db_connection():
-#         return jsonify("Database connection successful")
-#     else:
-#         return jsonify("Database connection error")
-
-
 if __name__ == "__main__":
     app.run(debug=True, port=5000, host="0.0.0.0")
