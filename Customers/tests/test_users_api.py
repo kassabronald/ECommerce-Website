@@ -1,82 +1,98 @@
-import pytest
-import requests
-
-BASE_URL = "http://localhost:5000/user"
+import sys, os
 
 
-sample_user = {
-    "full_name": "John Doe",
-    "username": "testJhonDoe",
-    "password": "securepassword",
+user_data = {
+    "full_name": "John Doe Kassab",
+    "username": "johndoe",
+    "password": "password123",
     "age": 30,
-    "address": "123 Main St",
+    "address": "123 Main St, City",
     "gender": "Male",
     "marital_status": "Single",
 }
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
-@pytest.fixture(scope="function")
-def setup_user():
-    response = requests.post(BASE_URL, json=sample_user)
-    assert response.status_code == 201
-    yield sample_user
-    delete_response = requests.delete(f"{BASE_URL}/{sample_user['username']}")
-    assert delete_response.status_code == 200
+import pytest
+from app import app
+from flask import json
+import faker
 
 
-def test_add_customer():
-    response = requests.post(BASE_URL, json=sample_user)
-    assert response.status_code == 201
+@pytest.fixture
+def client():
+    return app.test_client()
 
 
-def test_delete_user():
-    create_response = requests.post(BASE_URL, json=sample_user)
-    assert create_response.status_code == 201
+@pytest.fixture
+def sample_user(client):
+    user_data = {
+        "full_name": "John Doe Kassab",
+        "username": "johndoe",
+        "password": "password123",
+        "age": 30,
+        "address": "123 Main St, City",
+        "gender": "Male",
+        "marital_status": "Single",
+    }
 
-    delete_response = requests.delete(f"{BASE_URL}/{sample_user['username']}")
-    assert delete_response.status_code == 200
+    response = client.post("/user/", json=user_data)
+    assert response.status_code == 200
 
+    yield user_data
 
-def test_get_all_users():
-    response = requests.get(BASE_URL)
+    response = client.delete(f"/user/johndoe")
     assert response.status_code == 200
 
 
-def test_get_user():
-    create_response = requests.post(BASE_URL, json=sample_user)
-    assert create_response.status_code == 201
+def test_add_customer(client):
+    response = client.post(
+        "/user/",
+        json={
+            "full_name": "John Doe",
+            "username": "johndoe",
+            "password": "password123",
+            "age": 30,
+            "address": "123 Main St",
+            "gender": "Male",
+            "marital_status": "Single",
+        },
+    )
+    assert response.status_code == 201
 
-    response = requests.get(f"{BASE_URL}/{sample_user['username']}")
+
+def test_delete_user(client):
+    response = client.delete("/user/johndoe")
     assert response.status_code == 200
 
 
-def test_deduce_money():
-    create_response = requests.post(BASE_URL, json=sample_user)
-    assert create_response.status_code == 201
+def test_get_all_users(client):
+    response = client.get("/user/")
+    assert response.status_code == 200
 
-    deduce_data = {"amount_to_charge": 10}  # Adjust amount as needed
-    response = requests.put(
-        f"{BASE_URL}/transactions/{sample_user['username']}", json=deduce_data
+
+def test_get_user(client):
+    client.post("/user/", json=user_data)
+    response = client.get("/user/johndoe")
+    assert response.status_code == 200
+
+
+def test_deduce_money(client):
+    client.post("/user/", json=user_data)
+    response = client.put("/user/transactions/johndoe", json={"amount_to_charge": 50})
+    assert response.status_code == 200
+
+
+def test_charge_customer(client):
+    client.post("/user/", json=user_data)
+    response = client.put(
+        "/user/transactions",
+        json={"user_to_charge": "johndoe", "amount_to_charge": 100},
     )
     assert response.status_code == 200
 
 
-def test_charge_customer():
-    create_response = requests.post(BASE_URL, json=sample_user)
-    assert create_response.status_code == 201
-
-    charge_data = {
-        "user_to_charge": sample_user["username"],
-        "amount_to_charge": 20,
-    }
-    response = requests.put(f"{BASE_URL}/transactions", json=charge_data)
-    assert response.status_code == 200
-
-
-def test_update_information():
-    create_response = requests.post(BASE_URL, json=sample_user)
-    assert create_response.status_code == 201
-
-    update_data = {"age": 31}
-    response = requests.put(f"{BASE_URL}/{sample_user['username']}", json=update_data)
+def test_update_information(client):
+    client.post("/user/", json=user_data)
+    response = client.put("/user/johndoe", json={"address": "456 Elm St"})
     assert response.status_code == 200
